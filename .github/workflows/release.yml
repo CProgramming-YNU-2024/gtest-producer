@@ -14,10 +14,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Make asset
+      - name: Build GTest
         run: |
-          mkdir -p out
-          tar -czf out/gtest-linux-x64.tar.gz tools/gtest
+          git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
+          cd googletest
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j$(nproc)
+
+      - name: Package artifacts
+        run: |
+          mkdir -p gtest-libs
+          cp googletest/build/lib/*.a gtest-libs/
+          cp -r googletest/googletest/include gtest-libs/
+          tar czf gtest-prebuilt.tar.gz gtest-libs/
 
       # - name: Create Release
       #   id: create_release
