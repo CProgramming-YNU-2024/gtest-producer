@@ -28,6 +28,41 @@ jobs:
           mkdir -p gtest-libs
           cp googletest/build/lib/*.a gtest-libs/
           cp -r googletest/googletest/include gtest-libs/
+          
+          # Create a CMake config file for easier find_package usage
+          mkdir -p gtest-libs/lib/cmake/GTest
+          cat > gtest-libs/lib/cmake/GTest/GTestConfig.cmake << 'EOF'
+          # GTest CMake configuration file
+          get_filename_component(GTEST_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+          get_filename_component(GTEST_ROOT "${GTEST_CMAKE_DIR}/../../.." ABSOLUTE)
+          
+          set(GTEST_INCLUDE_DIRS "${GTEST_ROOT}/include")
+          set(GTEST_LIBRARIES "${GTEST_ROOT}/libgtest.a")
+          set(GTEST_MAIN_LIBRARIES "${GTEST_ROOT}/libgtest_main.a")
+          set(GTEST_BOTH_LIBRARIES ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})
+          
+          if(NOT TARGET GTest::gtest)
+            add_library(GTest::gtest STATIC IMPORTED)
+            set_target_properties(GTest::gtest PROPERTIES
+              IMPORTED_LOCATION "${GTEST_LIBRARIES}"
+              INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIRS}"
+              INTERFACE_LINK_LIBRARIES "pthread"
+            )
+          endif()
+          
+          if(NOT TARGET GTest::gtest_main)
+            add_library(GTest::gtest_main STATIC IMPORTED)
+            set_target_properties(GTest::gtest_main PROPERTIES
+              IMPORTED_LOCATION "${GTEST_MAIN_LIBRARIES}"
+              INTERFACE_INCLUDE_DIRECTORIES "${GTEST_INCLUDE_DIRS}"
+              INTERFACE_LINK_LIBRARIES "GTest::gtest;pthread"
+            )
+          endif()
+          
+          set(GTest_FOUND TRUE)
+          set(GTEST_FOUND TRUE)
+          EOF
+          
           tar czf gtest.tar.gz gtest-libs/
 
       - name: Create Version Tag and Release
