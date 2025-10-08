@@ -1,73 +1,41 @@
-name: Build and Publish GTest
+name: "Publish App Artifact"
+
 on:
   push:
-    # tags: ["v*"]
+    branches:
+      - main
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
+    # Grant permissions for the GITHUB_TOKEN to push to GHCR
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Build GTest
-        run: |
-          git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
-          cd googletest
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build -j$(nproc)
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Package artifacts
+      - name: Create a sample application archive
         run: |
-          mkdir -p gtest-libs
-          cp googletest/build/lib/*.a gtest-libs/
-          cp -r googletest/googletest/include gtest-libs/
-          tar czf gtest-prebuilt.tar.gz gtest-libs/
+          mkdir -p my-app
+          echo "This is the content of my application v1.0" > my-app/content.txt
+          echo "Release notes for ${{ github.sha }}" > my-app/release.md
+          tar -czvf my-app-bundle.tar.gz my-app
+          echo "Created my-app-bundle.tar.gz"
 
-      - name: Login to GHCR
+      - name: Install ORAS CLI
+        uses: oras-project/setup-oras@v1
+
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push to GHCR as OCI artifact
+      - name: Push artifact to GHCR using ORAS
         run: |
-          # Create OCI manifest
-          DIGEST=$(sha256sum gtest-prebuilt.tar.gz | cut -d' ' -f1)
-          SIZE=$(stat -c%s gtest-prebuilt.tar.gz)
-
-          # Push blob (the actual tar.gz)
-          curl -X POST "https://ghcr.io/v2/cprogramming-ynu-2024/gtest-prebuilt/blobs/uploads/" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -i | grep -i location | cut -d' ' -f2 | tr -d '\r' > upload_url.txt
-
-          UPLOAD_URL=$(cat upload_url.txt)
-          curl -X PUT "${UPLOAD_URL}&digest=sha256:${DIGEST}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @gtest-prebuilt.tar.gz
-
-          # Create and push manifest
-          cat > manifest.json <<EOF
-          {
-            "schemaVersion": 2,
-            "mediaType": "application/vnd.oci.image.manifest.v1+json",
-            "config": {
-              "mediaType": "application/vnd.oci.empty.v1+json",
-              "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-              "size": 2
-            },
-            "layers": [{
-              "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-              "digest": "sha256:${DIGEST}",
-              "size": ${SIZE}
-            }]
-          }
-          EOF
-
-          curl -X PUT "https://ghcr.io/v2/cprogramming-ynu-2024/gtest-prebuilt/manifests/${GITHUB_REF#refs/tags/}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/vnd.oci.image.manifest.v1+json" \
-            --data-binary @manifest.json
+          # Use the git commit SHA as a unique and traceable tag
+          oras push ghcr.io/${{ github.repository }}/my-app-bundle:${{ github.sha }} my-app-bundle.tar.gz
