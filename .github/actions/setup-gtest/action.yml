@@ -1,0 +1,59 @@
+name: 'Setup GTest'
+description: 'Downloads and installs pre-built GTest from gtest-producer repository'
+branding:
+  icon: 'download'
+  color: 'blue'
+
+inputs:
+  gtest-version:
+    description: 'Version tag or "latest" to download'
+    required: false
+    default: 'latest'
+  producer-repo:
+    description: 'Repository containing GTest releases (owner/repo format)'
+    required: false
+    default: 'CProgramming-YNU-2024/gtest-producer'
+
+outputs:
+  gtest-path:
+    description: 'Path where GTest was installed'
+    value: '/usr/local/gtest-libs'
+  include-path:
+    description: 'Path to GTest include directory'
+    value: '/usr/local/gtest-libs/include'
+  lib-path:
+    description: 'Path containing GTest library files'
+    value: '/usr/local/gtest-libs'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download GTest Artifact
+      shell: bash
+      run: |
+        echo "Downloading GTest from ${{ inputs.producer-repo }}"
+        
+        if [ "${{ inputs.gtest-version }}" = "latest" ]; then
+          DOWNLOAD_URL="https://github.com/${{ inputs.producer-repo }}/releases/latest/download/gtest.tar.gz"
+        else
+          DOWNLOAD_URL="https://github.com/${{ inputs.producer-repo }}/releases/download/${{ inputs.gtest-version }}/gtest.tar.gz"
+        fi
+        
+        echo "Downloading from: $DOWNLOAD_URL"
+        curl -L \
+          -H "Accept: application/octet-stream" \
+          -o gtest.tar.gz \
+          "$DOWNLOAD_URL"
+    
+    - name: Install GTest
+      shell: bash
+      run: |
+        echo "Extracting GTest to /usr/local/"
+        sudo tar -xzf gtest.tar.gz -C /usr/local/
+        
+        echo "GTest installed successfully!"
+        echo "Include path: /usr/local/gtest-libs/include"
+        echo "Library files in: /usr/local/gtest-libs"
+        
+        # Verify installation
+        ls -la /usr/local/gtest-libs/
