@@ -1,19 +1,16 @@
-name: Release gtest
-
+name: Build and Publish GTest
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      packages: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Build GTest
         run: |
           git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
@@ -28,23 +25,11 @@ jobs:
           cp -r googletest/googletest/include gtest-libs/
           tar czf gtest-prebuilt.tar.gz gtest-libs/
 
-      # - name: Create Release
-      #   id: create_release
-      #   uses: actions/create-release@v1
-      #   with:
-      #     tag_name: v1.2.3
-      #     release_name: gtest v1.2.3
-      #     body: |-
-      #       Mock gtest release v1.2.3
-      #     draft: false
-      #     prerelease: false
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
-        with:
-          files: gtest-prebuilt.tar.gz
-          tag_name: v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to GitHub Packages
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          curl -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/gzip" \
+            --data-binary @gtest-prebuilt.tar.gz \
+            "https://maven.pkg.github.com/CProgramming-YNU-2024/gtest-producer/gtest-prebuilt/${VERSION}/gtest-prebuilt-${VERSION}.tar.gz"
