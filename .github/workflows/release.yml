@@ -1,4 +1,4 @@
-name: "Publish App Artifact"
+name: Build and Release GTest Artifact
 
 on:
   push:
@@ -6,36 +6,38 @@ on:
       - main
 
 jobs:
-  build-and-publish:
+  build-and-release:
     runs-on: ubuntu-latest
-    # Grant permissions for the GITHUB_TOKEN to push to GHCR
+    # Grant permissions for the GITHUB_TOKEN to create releases
     permissions:
-      contents: read
-      packages: write
+      contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create a sample application archive
+      - name: Build GTest
         run: |
-          mkdir -p my-app
-          echo "This is the content of my application v1.0" > my-app/content.txt
-          echo "Release notes for ${{ github.sha }}" > my-app/release.md
-          tar -czvf my-app-bundle.tar.gz my-app
-          echo "Created my-app-bundle.tar.gz"
+          git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
+          cd googletest
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j$(nproc)
 
-      - name: Install ORAS CLI
-        uses: oras-project/setup-oras@v1
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push artifact to GHCR using ORAS
+      - name: Package artifacts
         run: |
-          # Use the git commit SHA as a unique and traceable tag
-          oras push ghcr.io/${{ github.repository }}/my-app-bundle:${{ github.sha }} my-app-bundle.tar.gz
+          mkdir -p gtest-libs
+          cp googletest/build/lib/*.a gtest-libs/
+          cp -r googletest/googletest/include gtest-libs/
+          tar czf gtest.tar.gz gtest-libs/
+
+      - name: Create Version Tag and Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create a unique tag name, e.g., "build-20251008.1"
+          TAG_NAME="build-$(date +%Y%m%d).${{ github.run_number }}"
+
+          # Create the release and upload the artifact in one command using the GitHub CLI
+          gh release create "$TAG_NAME" \
+             --notes "Automated build artifact" \
+             gtest.tar.gz
