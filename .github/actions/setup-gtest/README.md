@@ -39,18 +39,18 @@ A composite GitHub Action that downloads and installs pre-built GTest from the `
 
 ## Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `gtest-version` | Version tag or "latest" to download | No | `latest` |
-| `producer-repo` | Repository containing GTest releases (owner/repo format) | No | `CProgramming-YNU-2024/gtest-producer` |
+| Input           | Description                                              | Required | Default                                |
+| --------------- | -------------------------------------------------------- | -------- | -------------------------------------- |
+| `gtest-version` | Version tag or "latest" to download                      | No       | `latest`                               |
+| `producer-repo` | Repository containing GTest releases (owner/repo format) | No       | `CProgramming-YNU-2024/gtest-producer` |
 
 ## Outputs
 
-| Output | Description | Value |
-|--------|-------------|-------|
-| `gtest-path` | Path where GTest was installed | `/usr/local/gtest-libs` |
-| `include-path` | Path to GTest include directory | `/usr/local/gtest-libs/include` |
-| `lib-path` | Path containing GTest library files | `/usr/local/gtest-libs` |
+| Output         | Description                         | Value                           |
+| -------------- | ----------------------------------- | ------------------------------- |
+| `gtest-path`   | Path where GTest was installed      | `/usr/local/gtest-libs`         |
+| `include-path` | Path to GTest include directory     | `/usr/local/gtest-libs/include` |
+| `lib-path`     | Path containing GTest library files | `/usr/local/gtest-libs`         |
 
 ## Complete Example
 
