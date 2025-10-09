@@ -1,0 +1,59 @@
+name: "Setup Uchardet"
+description: "Downloads and installs pre-built Uchardet from gtest-producer repository"
+branding:
+  icon: "download"
+  color: "green"
+
+inputs:
+  uchardet-version:
+    description: 'Version tag or "latest" to download'
+    required: false
+    default: "latest"
+  producer-repo:
+    description: "Repository containing Uchardet releases (owner/repo format)"
+    required: false
+    default: "CProgramming-YNU-2024/gtest-producer"
+
+outputs:
+  uchardet-path:
+    description: "Path where Uchardet was installed"
+    value: "/usr/local/uchardet-libs"
+  include-path:
+    description: "Path to Uchardet include directory"
+    value: "/usr/local/uchardet-libs"
+  lib-path:
+    description: "Path containing Uchardet library files"
+    value: "/usr/local/uchardet-libs"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download Uchardet Artifact
+      shell: bash
+      run: |
+        echo "Downloading Uchardet from ${{ inputs.producer-repo }}"
+
+        if [ "${{ inputs.uchardet-version }}" = "latest" ]; then
+          DOWNLOAD_URL="https://github.com/${{ inputs.producer-repo }}/releases/latest/download/uchardet.tar.gz"
+        else
+          DOWNLOAD_URL="https://github.com/${{ inputs.producer-repo }}/releases/download/${{ inputs.uchardet-version }}/uchardet.tar.gz"
+        fi
+
+        echo "Downloading from: $DOWNLOAD_URL"
+        curl -L \
+          -H "Accept: application/octet-stream" \
+          -o uchardet.tar.gz \
+          "$DOWNLOAD_URL"
+
+    - name: Install Uchardet
+      shell: bash
+      run: |
+        echo "Extracting Uchardet to /usr/local/"
+        sudo tar -xzf uchardet.tar.gz -C /usr/local/
+
+        echo "Uchardet installed successfully!"
+        echo "Include path: /usr/local/uchardet-libs"
+        echo "Library files in: /usr/local/uchardet-libs"
+
+        # Verify installation
+        ls -la /usr/local/uchardet-libs/

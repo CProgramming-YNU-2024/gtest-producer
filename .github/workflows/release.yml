@@ -1,4 +1,4 @@
-name: Build and Release GTest Artifact
+name: Build and Release GTest and Uchardet Artifacts
 
 on:
   push:
@@ -65,6 +65,43 @@ jobs:
           
           tar czf gtest.tar.gz gtest-libs/
 
+      - name: Build Uchardet
+        run: |
+          git clone --depth 1 --branch v0.0.8 https://gitlab.freedesktop.org/uchardet/uchardet.git
+          cd uchardet
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_BINARY=OFF -DBUILD_SHARED_LIBS=OFF
+          cmake --build build -j$(nproc)
+
+      - name: Package Uchardet artifacts
+        run: |
+          mkdir -p uchardet-libs
+          cp uchardet/build/src/libuchardet.a uchardet-libs/
+          cp -r uchardet/src/*.h uchardet-libs/
+          
+          # Create a CMake config file for easier find_package usage
+          mkdir -p uchardet-libs/lib/cmake/Uchardet
+          cat > uchardet-libs/lib/cmake/Uchardet/UchardetConfig.cmake << 'EOF'
+          # Uchardet CMake configuration file
+          get_filename_component(UCHARDET_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+          get_filename_component(UCHARDET_ROOT "${UCHARDET_CMAKE_DIR}/../../.." ABSOLUTE)
+          
+          set(UCHARDET_INCLUDE_DIRS "${UCHARDET_ROOT}")
+          set(UCHARDET_LIBRARIES "${UCHARDET_ROOT}/libuchardet.a")
+          
+          if(NOT TARGET Uchardet::Uchardet)
+            add_library(Uchardet::Uchardet STATIC IMPORTED)
+            set_target_properties(Uchardet::Uchardet PROPERTIES
+              IMPORTED_LOCATION "${UCHARDET_LIBRARIES}"
+              INTERFACE_INCLUDE_DIRECTORIES "${UCHARDET_INCLUDE_DIRS}"
+            )
+          endif()
+          
+          set(Uchardet_FOUND TRUE)
+          set(UCHARDET_FOUND TRUE)
+          EOF
+          
+          tar czf uchardet.tar.gz uchardet-libs/
+
       - name: Create Version Tag and Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,4 +112,5 @@ jobs:
           # Create the release and upload the artifact in one command using the GitHub CLI
           gh release create "$TAG_NAME" \
              --notes "Automated build artifact" \
-             gtest.tar.gz
+             gtest.tar.gz \
+             uchardet.tar.gz
