@@ -13,6 +13,14 @@ inputs:
     description: "Repository containing Uchardet releases (owner/repo format)"
     required: false
     default: "CProgramming-YNU-2024/gtest-producer"
+  retry-count:
+    description: "Number of retries for download failures"
+    required: false
+    default: "5"
+  retry-delay:
+    description: "Delay in seconds between retries"
+    required: false
+    default: "2"
 
 outputs:
   uchardet-path:
@@ -41,6 +49,9 @@ runs:
 
         echo "Downloading from: $DOWNLOAD_URL"
         curl -L \
+          --retry ${{ inputs.retry-count }} \
+          --retry-delay ${{ inputs.retry-delay }} \
+          --retry-all-errors \
           -H "Accept: application/octet-stream" \
           -o uchardet.tar.gz \
           "$DOWNLOAD_URL"

@@ -28,19 +28,19 @@ jobs:
           mkdir -p gtest-libs
           cp googletest/build/lib/*.a gtest-libs/
           cp -r googletest/googletest/include gtest-libs/
-          
+
           # Create a CMake config file for easier find_package usage
           mkdir -p gtest-libs/lib/cmake/GTest
           cat > gtest-libs/lib/cmake/GTest/GTestConfig.cmake << 'EOF'
           # GTest CMake configuration file
           get_filename_component(GTEST_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
           get_filename_component(GTEST_ROOT "${GTEST_CMAKE_DIR}/../../.." ABSOLUTE)
-          
+
           set(GTEST_INCLUDE_DIRS "${GTEST_ROOT}/include")
           set(GTEST_LIBRARIES "${GTEST_ROOT}/libgtest.a")
           set(GTEST_MAIN_LIBRARIES "${GTEST_ROOT}/libgtest_main.a")
           set(GTEST_BOTH_LIBRARIES ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})
-          
+
           if(NOT TARGET GTest::gtest)
             add_library(GTest::gtest STATIC IMPORTED)
             set_target_properties(GTest::gtest PROPERTIES
@@ -49,7 +49,7 @@ jobs:
               INTERFACE_LINK_LIBRARIES "pthread"
             )
           endif()
-          
+
           if(NOT TARGET GTest::gtest_main)
             add_library(GTest::gtest_main STATIC IMPORTED)
             set_target_properties(GTest::gtest_main PROPERTIES
@@ -58,11 +58,11 @@ jobs:
               INTERFACE_LINK_LIBRARIES "GTest::gtest;pthread"
             )
           endif()
-          
+
           set(GTest_FOUND TRUE)
           set(GTEST_FOUND TRUE)
           EOF
-          
+
           tar czf gtest.tar.gz gtest-libs/
 
       - name: Build Uchardet
@@ -77,17 +77,17 @@ jobs:
           mkdir -p uchardet-libs
           cp uchardet/build/src/libuchardet.a uchardet-libs/
           cp -r uchardet/src/*.h uchardet-libs/
-          
+
           # Create a CMake config file for easier find_package usage
           mkdir -p uchardet-libs/lib/cmake/Uchardet
           cat > uchardet-libs/lib/cmake/Uchardet/UchardetConfig.cmake << 'EOF'
           # Uchardet CMake configuration file
           get_filename_component(UCHARDET_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
           get_filename_component(UCHARDET_ROOT "${UCHARDET_CMAKE_DIR}/../../.." ABSOLUTE)
-          
+
           set(UCHARDET_INCLUDE_DIRS "${UCHARDET_ROOT}")
           set(UCHARDET_LIBRARIES "${UCHARDET_ROOT}/libuchardet.a")
-          
+
           if(NOT TARGET Uchardet::Uchardet)
             add_library(Uchardet::Uchardet STATIC IMPORTED)
             set_target_properties(Uchardet::Uchardet PROPERTIES
@@ -95,11 +95,11 @@ jobs:
               INTERFACE_INCLUDE_DIRECTORIES "${UCHARDET_INCLUDE_DIRS}"
             )
           endif()
-          
+
           set(Uchardet_FOUND TRUE)
           set(UCHARDET_FOUND TRUE)
           EOF
-          
+
           tar czf uchardet.tar.gz uchardet-libs/
 
       - name: Create Version Tag and Release
