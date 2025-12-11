@@ -48,7 +48,7 @@ runs:
         fi
 
         echo "Downloading from: $DOWNLOAD_URL"
-        curl -L \
+        curl -L --fail \
           --retry ${{ inputs.retry-count }} \
           --retry-delay ${{ inputs.retry-delay }} \
           --retry-all-errors \
