@@ -1,4 +1,4 @@
-name: Build and Release GTest and Uchardet Artifacts
+name: Build and Release GTest, Uchardet, and Libvterm Artifacts
 
 on:
   push:
@@ -102,6 +102,51 @@ jobs:
 
           tar czf uchardet.tar.gz uchardet-libs/
 
+      - name: Build libvterm
+        run: |
+          # Install libtool (required by libvterm's Makefile)
+          sudo apt-get update && sudo apt-get install -y libtool
+
+          git clone --depth 1 https://github.com/neovim/libvterm.git
+          cd libvterm
+          
+          # Build libvterm using make
+          make
+
+      - name: Package libvterm artifacts
+        run: |
+          mkdir -p libvterm-libs/include
+          
+          # Copy static library (extract from .libs created by libtool)
+          cp libvterm/.libs/libvterm.a libvterm-libs/
+          
+          # Copy headers
+          cp libvterm/include/*.h libvterm-libs/include/
+
+          # Create a CMake config file for easier find_package usage
+          mkdir -p libvterm-libs/lib/cmake/Libvterm
+          cat > libvterm-libs/lib/cmake/Libvterm/LibvtermConfig.cmake << 'EOF'
+          # Libvterm CMake configuration file
+          get_filename_component(LIBVTERM_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+          get_filename_component(LIBVTERM_ROOT "${LIBVTERM_CMAKE_DIR}/../../.." ABSOLUTE)
+
+          set(LIBVTERM_INCLUDE_DIRS "${LIBVTERM_ROOT}/include")
+          set(LIBVTERM_LIBRARIES "${LIBVTERM_ROOT}/libvterm.a")
+
+          if(NOT TARGET Libvterm::Libvterm)
+            add_library(Libvterm::Libvterm STATIC IMPORTED)
+            set_target_properties(Libvterm::Libvterm PROPERTIES
+              IMPORTED_LOCATION "${LIBVTERM_LIBRARIES}"
+              INTERFACE_INCLUDE_DIRECTORIES "${LIBVTERM_INCLUDE_DIRS}"
+            )
+          endif()
+
+          set(Libvterm_FOUND TRUE)
+          set(LIBVTERM_FOUND TRUE)
+          EOF
+
+          tar czf libvterm.tar.gz libvterm-libs/
+
       - name: Create Version Tag and Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -113,4 +158,5 @@ jobs:
           gh release create "$TAG_NAME" \
              --notes "Automated build artifact" \
              gtest.tar.gz \
-             uchardet.tar.gz
+             uchardet.tar.gz \
+             libvterm.tar.gz

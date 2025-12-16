@@ -1,0 +1,70 @@
+name: "Setup libvterm"
+description: "Downloads and installs pre-built libvterm from gtest-producer repository"
+branding:
+  icon: "download"
+  color: "green"
+
+inputs:
+  libvterm-version:
+    description: 'Version tag or "latest" to download'
+    required: false
+    default: "latest"
+  producer-repo:
+    description: "Repository containing libvterm releases (owner/repo format)"
+    required: false
+    default: "CProgramming-YNU-2024/gtest-producer"
+  retry-count:
+    description: "Number of retries for download failures"
+    required: false
+    default: "5"
+  retry-delay:
+    description: "Delay in seconds between retries"
+    required: false
+    default: "2"
+
+outputs:
+  libvterm-path:
+    description: "Path where libvterm was installed"
+    value: "/usr/local/libvterm-libs"
+  include-path:
+    description: "Path to libvterm include directory"
+    value: "/usr/local/libvterm-libs/include"
+  lib-path:
+    description: "Path containing libvterm library files"
+    value: "/usr/local/libvterm-libs"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download libvterm Artifact
+      shell: bash
+      run: |
+        echo "Downloading libvterm from ${{ inputs.producer-repo }}"
+
+        if [ "${{ inputs.libvterm-version }}" = "latest" ]; then
+          DOWNLOAD_URL="https://github.com/${{ inputs.producer-repo }}/releases/latest/download/libvterm.tar.gz"
+        else
+          DOWNLOAD_URL="https://github.com/${{ inputs.producer-repo }}/releases/download/${{ inputs.libvterm-version }}/libvterm.tar.gz"
+        fi
+
+        echo "Downloading from: $DOWNLOAD_URL"
+        curl -L --fail \
+          --retry ${{ inputs.retry-count }} \
+          --retry-delay ${{ inputs.retry-delay }} \
+          --retry-all-errors \
+          -H "Accept: application/octet-stream" \
+          -o libvterm.tar.gz \
+          "$DOWNLOAD_URL"
+
+    - name: Install libvterm
+      shell: bash
+      run: |
+        echo "Extracting libvterm to /usr/local/"
+        sudo tar -xzf libvterm.tar.gz -C /usr/local/
+
+        echo "libvterm installed successfully!"
+        echo "Include path: /usr/local/libvterm-libs/include"
+        echo "Library files in: /usr/local/libvterm-libs"
+
+        # Verify installation
+        ls -la /usr/local/libvterm-libs/
