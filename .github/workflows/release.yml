@@ -104,8 +104,8 @@ jobs:
 
       - name: Build libvterm
         run: |
-          # Install libtool (required by libvterm's Makefile)
-          sudo apt-get update && sudo apt-get install -y libtool
+          # Install libtool-bin (provides the 'libtool' command required by libvterm's Makefile)
+          sudo apt-get update && sudo apt-get install -y libtool-bin
 
           git clone --depth 1 https://github.com/neovim/libvterm.git
           cd libvterm
