@@ -109,17 +109,17 @@ jobs:
 
           git clone --depth 1 https://github.com/neovim/libvterm.git
           cd libvterm
-          
+
           # Build libvterm using make
           make
 
       - name: Package libvterm artifacts
         run: |
           mkdir -p libvterm-libs/include
-          
+
           # Copy static library (extract from .libs created by libtool)
           cp libvterm/.libs/libvterm.a libvterm-libs/
-          
+
           # Copy headers
           cp libvterm/include/*.h libvterm-libs/include/
 

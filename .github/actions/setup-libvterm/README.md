@@ -19,20 +19,20 @@ steps:
 
 ## Inputs
 
-| Input | Description | Default |
-|-------|-------------|---------|
-| `libvterm-version` | Version tag or "latest" | `latest` |
-| `producer-repo` | Repository containing releases | `CProgramming-YNU-2024/gtest-producer` |
-| `retry-count` | Number of download retries | `5` |
-| `retry-delay` | Delay between retries (seconds) | `2` |
+| Input              | Description                     | Default                                |
+| ------------------ | ------------------------------- | -------------------------------------- |
+| `libvterm-version` | Version tag or "latest"         | `latest`                               |
+| `producer-repo`    | Repository containing releases  | `CProgramming-YNU-2024/gtest-producer` |
+| `retry-count`      | Number of download retries      | `5`                                    |
+| `retry-delay`      | Delay between retries (seconds) | `2`                                    |
 
 ## Outputs
 
-| Output | Description |
-|--------|-------------|
-| `libvterm-path` | Path where libvterm was installed |
-| `include-path` | Path to libvterm include directory |
-| `lib-path` | Path containing libvterm library files |
+| Output          | Description                            |
+| --------------- | -------------------------------------- |
+| `libvterm-path` | Path where libvterm was installed      |
+| `include-path`  | Path to libvterm include directory     |
+| `lib-path`      | Path containing libvterm library files |
 
 ## CMake Integration
 
