@@ -211,6 +211,13 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Rename PTY Runner artifacts to avoid conflicts
+        run: |
+          mv pty_runner-linux-x64/pty_runner pty_runner-linux-x64
+          mv pty_runner-windows-x64.exe/pty_runner.exe pty_runner-windows-x64.exe
+          mv pty_runner-macos-x64/pty_runner pty_runner-macos-x64
+          mv pty_runner-macos-arm64/pty_runner pty_runner-macos-arm64
+
       - name: Create Version Tag and Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -224,7 +231,7 @@ jobs:
              libs/gtest.tar.gz \
              libs/uchardet.tar.gz \
              libs/libvterm.tar.gz \
-             pty_runner-linux-x64/pty_runner \
-             pty_runner-windows-x64.exe/pty_runner.exe \
-             pty_runner-macos-x64/pty_runner \
-             pty_runner-macos-arm64/pty_runner
+             pty_runner-linux-x64 \
+             pty_runner-windows-x64.exe \
+             pty_runner-macos-x64 \
+             pty_runner-macos-arm64
