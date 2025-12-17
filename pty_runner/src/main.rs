@@ -75,6 +75,32 @@ fn filter_osc_sequences(data: &[u8]) -> Vec<u8> {
     result
 }
 
+/// Normalize erase sequences to use default colors
+/// Windows ConPTY's ESC[K (erase to end of line) uses current colors
+/// Linux PTY doesn't send ESC[K, just ends the line
+/// Insert reset before ESC[K to ensure spaces are written with default colors
+fn normalize_erase_sequences(data: &[u8]) -> Vec<u8> {
+    let mut result = Vec::with_capacity(data.len());
+    let mut i = 0;
+
+    while i < data.len() {
+        // Look for ESC[K (erase to end of line)
+        if i + 2 < data.len() && data[i] == 0x1b && data[i + 1] == b'[' && data[i + 2] == b'K' {
+            // Insert explicit reset before the erase
+            // This ensures spaces are written with default colors on Windows ConPTY
+            result.extend_from_slice(b"\x1b[0;39;49m");
+            // Then add the erase sequence
+            result.extend_from_slice(&data[i..i + 3]);
+            i += 3;
+        } else {
+            result.push(data[i]);
+            i += 1;
+        }
+    }
+
+    result
+}
+
 /// Normalize ANSI reset sequence: ESC [m or ESC [0m should always reset to default
 /// On Windows ConPTY, sometimes the foreground color persists after reset
 /// This function ensures reset sequences are followed by explicit default color codes
@@ -331,8 +357,12 @@ fn main() -> Result<()> {
     let filtered = filter_osc_sequences(&output);
     eprintln!("After filtering OSC: {} bytes", filtered.len());
 
+    // Normalize erase sequences to use default colors (Windows ConPTY issue)
+    let erase_normalized = normalize_erase_sequences(&filtered);
+    eprintln!("After normalizing erases: {} bytes", erase_normalized.len());
+
     // Normalize ANSI reset sequences for cross-platform consistency
-    let normalized = normalize_reset_sequences(&filtered);
+    let normalized = normalize_reset_sequences(&erase_normalized);
     eprintln!("After normalizing resets: {} bytes", normalized.len());
 
     // Process output through terminal emulator
