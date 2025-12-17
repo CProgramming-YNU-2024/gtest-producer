@@ -1,0 +1,15 @@
+[package]
+name = "pty_runner"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-platform PTY runner for terminal state testing"
+
+[dependencies]
+portable-pty = "0.8"
+vt100 = "0.15"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+
+[profile.release]
+lto = true
+strip = true
