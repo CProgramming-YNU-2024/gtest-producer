@@ -13,6 +13,34 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+/// Normalize line endings: ensure all lines end with \r\n (CRLF) for Windows ConPTY
+fn normalize_line_endings(data: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    let mut i = 0;
+    while i < data.len() {
+        if data[i] == b'\r' && i + 1 < data.len() && data[i + 1] == b'\n' {
+            // Already CRLF, keep as is
+            result.push(b'\r');
+            result.push(b'\n');
+            i += 2;
+        } else if data[i] == b'\n' {
+            // LF only, convert to CRLF
+            result.push(b'\r');
+            result.push(b'\n');
+            i += 1;
+        } else if data[i] == b'\r' {
+            // CR only (rare), keep as is
+            result.push(b'\r');
+            i += 1;
+        } else {
+            // Normal character
+            result.push(data[i]);
+            i += 1;
+        }
+    }
+    result
+}
+
 /// PTY Runner for terminal state testing
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -126,7 +154,9 @@ fn main() -> Result<()> {
     // Send stdin content if provided
     if let Some(stdin_path) = &args.stdin_file {
         let stdin_content = fs::read(stdin_path)?;
-        writer.write_all(&stdin_content)?;
+        // Convert LF to CRLF for Windows ConPTY compatibility
+        let normalized = normalize_line_endings(&stdin_content);
+        writer.write_all(&normalized)?;
     }
 
     // Small delay to let program start
@@ -134,7 +164,9 @@ fn main() -> Result<()> {
 
     // Send keyboard input if provided
     if let Some(kb_data) = keyboard_input {
-        writer.write_all(&kb_data)?;
+        // Convert LF to CRLF for Windows ConPTY compatibility
+        let normalized = normalize_line_endings(&kb_data);
+        writer.write_all(&normalized)?;
     }
 
     // Wait for child with timeout
