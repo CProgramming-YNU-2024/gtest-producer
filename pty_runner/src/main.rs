@@ -75,6 +75,67 @@ fn filter_osc_sequences(data: &[u8]) -> Vec<u8> {
     result
 }
 
+/// Normalize ANSI reset sequence: ESC [m or ESC [0m should always reset to default
+/// On Windows ConPTY, sometimes the foreground color persists after reset
+/// This function ensures reset sequences are followed by explicit default color codes
+fn normalize_reset_sequences(data: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    let mut i = 0;
+    
+    while i < data.len() {
+        // Check for ESC [ ... m sequence
+        if i + 2 < data.len() && data[i] == 0x1b && data[i + 1] == b'[' {
+            // Find the end of the CSI sequence (ends with 'm')
+            let start = i;
+            i += 2;
+            let mut params = Vec::new();
+            let mut current_num = String::new();
+            
+            while i < data.len() {
+                if data[i] == b';' {
+                    if !current_num.is_empty() {
+                        params.push(current_num.clone());
+                        current_num.clear();
+                    }
+                    i += 1;
+                } else if data[i] == b'm' {
+                    if !current_num.is_empty() {
+                        params.push(current_num.clone());
+                    }
+                    
+                    // Check if this is a reset sequence (no params or param 0)
+                    let is_reset = params.is_empty() || (params.len() == 1 && params[0] == "0");
+                    
+                    if is_reset {
+                        // Replace with explicit reset + set default colors
+                        // ESC[0;39;49m = reset + default foreground + default background
+                        result.extend_from_slice(b"\x1b[0;39;49m");
+                    } else {
+                        // Keep original sequence
+                        result.extend_from_slice(&data[start..=i]);
+                    }
+                    
+                    i += 1;
+                    break;
+                } else if data[i].is_ascii_digit() {
+                    current_num.push(data[i] as char);
+                    i += 1;
+                } else {
+                    // Not a valid SGR sequence, keep original
+                    result.extend_from_slice(&data[start..=i]);
+                    i += 1;
+                    break;
+                }
+            }
+        } else {
+            result.push(data[i]);
+            i += 1;
+        }
+    }
+    
+    result
+}
+
 /// PTY Runner for terminal state testing
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -270,8 +331,12 @@ fn main() -> Result<()> {
     let filtered = filter_osc_sequences(&output);
     eprintln!("After filtering OSC: {} bytes", filtered.len());
 
+    // Normalize ANSI reset sequences for cross-platform consistency
+    let normalized = normalize_reset_sequences(&filtered);
+    eprintln!("After normalizing resets: {} bytes", normalized.len());
+
     // Process output through terminal emulator
-    parser.process(&filtered);
+    parser.process(&normalized);
 
     // Generate output based on format
     if args.output == "hex" {
