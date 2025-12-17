@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-release:
+  build-libs:
     runs-on: ubuntu-latest
     # Grant permissions for the GITHUB_TOKEN to create releases
     permissions:
@@ -147,6 +147,70 @@ jobs:
 
           tar czf libvterm.tar.gz libvterm-libs/
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libs
+          path: |
+            gtest.tar.gz
+            uchardet.tar.gz
+            libvterm.tar.gz
+
+  build-pty-runner:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: pty_runner
+            asset_name: pty_runner-linux-x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: pty_runner.exe
+            asset_name: pty_runner-windows-x64.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: pty_runner
+            asset_name: pty_runner-macos-x64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: pty_runner
+            asset_name: pty_runner-macos-arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build PTY Runner
+        run: |
+          cd pty_runner
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload PTY Runner artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: pty_runner/target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  create-release:
+    needs: [build-libs, build-pty-runner]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
       - name: Create Version Tag and Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -154,9 +218,13 @@ jobs:
           # Create a unique tag name, e.g., "build-20251008.1"
           TAG_NAME="build-$(date +%Y%m%d).${{ github.run_number }}"
 
-          # Create the release and upload the artifact in one command using the GitHub CLI
+          # Create the release and upload the artifacts in one command using the GitHub CLI
           gh release create "$TAG_NAME" \
              --notes "Automated build artifact" \
-             gtest.tar.gz \
-             uchardet.tar.gz \
-             libvterm.tar.gz
+             libs/gtest.tar.gz \
+             libs/uchardet.tar.gz \
+             libs/libvterm.tar.gz \
+             pty_runner-linux-x64/pty_runner \
+             pty_runner-windows-x64.exe/pty_runner.exe \
+             pty_runner-macos-x64/pty_runner \
+             pty_runner-macos-arm64/pty_runner

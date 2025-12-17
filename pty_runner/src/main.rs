@@ -160,13 +160,21 @@ fn main() -> Result<()> {
         }
     }
 
-    // Give a short time for any final output
-    thread::sleep(Duration::from_millis(100));
+    // Give more time for any final output and to drain the channel
+    thread::sleep(Duration::from_millis(200));
 
-    // Collect all output received so far
+    // Collect all output received so far (with a timeout per chunk)
     let mut output = Vec::new();
-    while let Ok(chunk) = rx.try_recv() {
-        output.extend(chunk);
+    let collect_deadline = std::time::Instant::now() + Duration::from_millis(300);
+    while std::time::Instant::now() < collect_deadline {
+        match rx.try_recv() {
+            Ok(chunk) => output.extend(chunk),
+            Err(mpsc::TryRecvError::Empty) => {
+                // No data yet, wait a bit
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(mpsc::TryRecvError::Disconnected) => break,
+        }
     }
 
     // Drop writer and master (but don't wait for reader thread - it may hang on Windows)
