@@ -41,6 +41,40 @@ fn normalize_line_endings(data: &[u8]) -> Vec<u8> {
     result
 }
 
+/// Filter out OSC (Operating System Command) sequences
+/// OSC sequences start with ESC ] and end with BEL (0x07) or ESC \
+/// These are often used for window titles and can differ between platforms
+fn filter_osc_sequences(data: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    let mut i = 0;
+    
+    while i < data.len() {
+        // Check for OSC start: ESC ]
+        if i + 1 < data.len() && data[i] == 0x1b && data[i + 1] == b']' {
+            // Skip until we find BEL (0x07) or ESC \ (0x1b 0x5c)
+            i += 2;
+            while i < data.len() {
+                if data[i] == 0x07 {
+                    // Found BEL terminator
+                    i += 1;
+                    break;
+                } else if i + 1 < data.len() && data[i] == 0x1b && data[i + 1] == b'\\' {
+                    // Found ESC \ terminator
+                    i += 2;
+                    break;
+                }
+                i += 1;
+            }
+        } else {
+            // Normal character, keep it
+            result.push(data[i]);
+            i += 1;
+        }
+    }
+    
+    result
+}
+
 /// PTY Runner for terminal state testing
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -232,8 +266,12 @@ fn main() -> Result<()> {
         eprintln!();
     }
 
+    // Filter out OS-specific sequences (e.g., window title OSC from Windows ConPTY)
+    let filtered = filter_osc_sequences(&output);
+    eprintln!("After filtering OSC: {} bytes", filtered.len());
+
     // Process output through terminal emulator
-    parser.process(&output);
+    parser.process(&filtered);
 
     // Generate output based on format
     if args.output == "hex" {
