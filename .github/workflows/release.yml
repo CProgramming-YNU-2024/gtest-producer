@@ -211,13 +211,20 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Debug - List downloaded artifacts
+        run: |
+          echo "Current directory structure:"
+          ls -R
+
       - name: Prepare PTY Runner binaries
         run: |
-          # Move binaries out of their artifact directories and rename
-          cp pty_runner-linux-x64/pty_runner ./pty_runner-linux-x64
-          cp pty_runner-windows-x64.exe/pty_runner.exe ./pty_runner-windows-x64.exe
-          cp pty_runner-macos-x64/pty_runner ./pty_runner-macos-x64
-          cp pty_runner-macos-arm64/pty_runner ./pty_runner-macos-arm64
+          # The artifact name is used as the directory, and files inside keep their names
+          # So pty_runner-linux-x64 artifact contains a file named "pty_runner"
+          # We need to rename during copy to avoid conflicts in release
+          cp pty_runner-linux-x64/pty_runner pty_runner-linux-x64-bin
+          cp pty_runner-windows-x64.exe/pty_runner.exe pty_runner-windows-x64.exe
+          cp pty_runner-macos-x64/pty_runner pty_runner-macos-x64-bin
+          cp pty_runner-macos-arm64/pty_runner pty_runner-macos-arm64-bin
 
       - name: Create Version Tag and Release
         env:
@@ -232,7 +239,7 @@ jobs:
              libs/gtest.tar.gz \
              libs/uchardet.tar.gz \
              libs/libvterm.tar.gz \
-             pty_runner-linux-x64 \
+             pty_runner-linux-x64-bin \
              pty_runner-windows-x64.exe \
-             pty_runner-macos-x64 \
-             pty_runner-macos-arm64
+             pty_runner-macos-x64-bin \
+             pty_runner-macos-arm64-bin
