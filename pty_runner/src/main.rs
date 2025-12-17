@@ -65,13 +65,17 @@ struct Args {
     #[arg(long, default_value = "25")]
     rows: u16,
 
-    /// Output format: "hex" or "text"
+    /// Output format: "hex", "text", or "raw"
     #[arg(short, long, default_value = "hex")]
     output: String,
 
     /// Timeout in milliseconds
     #[arg(short, long, default_value = "5000")]
     timeout: u64,
+
+    /// Debug: print raw bytes to stderr
+    #[arg(long, default_value = "false")]
+    debug_raw: bool,
 }
 
 fn main() -> Result<()> {
@@ -95,8 +99,9 @@ fn main() -> Result<()> {
 
     eprintln!("PTY opened successfully");
 
-    // Build command
-    let cmd = CommandBuilder::new(&args.executable);
+    // Build command with consistent TERM environment
+    let mut cmd = CommandBuilder::new(&args.executable);
+    cmd.env("TERM", "xterm"); // Ensure consistent terminal type across platforms
 
     // Spawn child process in PTY
     let mut child = pair
@@ -215,14 +220,29 @@ fn main() -> Result<()> {
 
     eprintln!("Captured {} bytes of output", output.len());
 
+    // Debug: print raw bytes if requested
+    if args.debug_raw {
+        eprintln!("Raw output bytes:");
+        for (i, &byte) in output.iter().enumerate() {
+            if i > 0 && i % 16 == 0 {
+                eprintln!();
+            }
+            eprint!("{:02X} ", byte);
+        }
+        eprintln!();
+    }
+
     // Process output through terminal emulator
     parser.process(&output);
 
     // Generate output based on format
     if args.output == "hex" {
         print_hex_state(&parser, args.rows, args.cols);
-    } else {
+    } else if args.output == "text" {
         print_text_state(&parser, args.rows, args.cols);
+    } else if args.output == "raw" {
+        // Just output the raw bytes
+        std::io::stdout().write_all(&output)?;
     }
 
     // Exit explicitly since the reader thread may still be blocking
