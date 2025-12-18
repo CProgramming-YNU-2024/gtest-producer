@@ -13,7 +13,34 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+/// Set console code page to UTF-8 on Windows
+/// This ensures UTF-8 characters are correctly interpreted by ConPTY
+#[cfg(windows)]
+fn set_utf8_console() {
+    use std::os::raw::c_uint;
+    
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn SetConsoleOutputCP(wCodePageID: c_uint) -> i32;
+        fn SetConsoleCP(wCodePageID: c_uint) -> i32;
+    }
+    
+    const CP_UTF8: c_uint = 65001;
+    
+    unsafe {
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+    }
+}
+
+#[cfg(not(windows))]
+fn set_utf8_console() {
+    // No-op on non-Windows platforms
+}
+
 /// Normalize line endings: ensure all lines end with \r\n (CRLF) for Windows ConPTY
+/// Only used on Windows platforms
+#[cfg(windows)]
 fn normalize_line_endings(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut i = 0;
@@ -200,6 +227,9 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    // Set UTF-8 console code page on Windows for proper Unicode support
+    set_utf8_console();
+    
     let args = Args::parse();
 
     eprintln!("Starting PTY runner...");
@@ -223,6 +253,15 @@ fn main() -> Result<()> {
     // Build command with consistent TERM environment
     let mut cmd = CommandBuilder::new(&args.executable);
     cmd.env("TERM", "xterm"); // Ensure consistent terminal type across platforms
+    
+    // On Windows, set environment variable to hint UTF-8 encoding
+    // Note: This may not fully solve ConPTY code page issues, but helps with some programs
+    #[cfg(windows)]
+    {
+        cmd.env("CHCP", "65001");
+        cmd.env("LANG", "en_US.UTF-8");
+        cmd.env("LC_ALL", "en_US.UTF-8");
+    }
 
     // Spawn child process in PTY
     let mut child = pair
@@ -284,21 +323,54 @@ fn main() -> Result<()> {
     // Send stdin content if provided
     if let Some(stdin_path) = &args.stdin_file {
         let stdin_content = fs::read(stdin_path)?;
-        // Normalize LF to CRLF for Windows scanf compatibility
-        // Echo is disabled, so this won't cause cursor positioning issues
-        let normalized = normalize_line_endings(&stdin_content);
-        writer.write_all(&normalized)?;
+        // On Windows, normalize LF to CRLF for scanf compatibility
+        // On Unix, keep LF as-is (Unix terminals expect LF)
+        #[cfg(windows)]
+        let data_to_send = normalize_line_endings(&stdin_content);
+        #[cfg(not(windows))]
+        let data_to_send = stdin_content;
+        writer.write_all(&data_to_send)?;
     }
 
     // Small delay to let program start
     thread::sleep(Duration::from_millis(100));
 
-    // Send keyboard input if provided
+    // Send keyboard input if provided, line by line with delays
+    // This ensures proper echo timing across platforms
     if let Some(kb_data) = keyboard_input {
-        // Normalize LF to CRLF for Windows scanf compatibility
-        // Echo is disabled, so this won't cause cursor positioning issues
-        let normalized = normalize_line_endings(&kb_data);
-        writer.write_all(&normalized)?;
+        // Split by newlines and send each line separately with a delay
+        // This gives the program time to process each input and echo before next input
+        let mut start_idx = 0;
+        for (i, &byte) in kb_data.iter().enumerate() {
+            if byte == b'\n' {
+                // Include the newline in this chunk
+                let line = &kb_data[start_idx..=i];
+                
+                #[cfg(windows)]
+                let data_to_send = normalize_line_endings(line);
+                #[cfg(not(windows))]
+                let data_to_send = line.to_vec();
+                
+                writer.write_all(&data_to_send)?;
+                writer.flush()?;
+                
+                // Delay between lines to allow program to process and echo
+                thread::sleep(Duration::from_millis(50));
+                
+                start_idx = i + 1;
+            }
+        }
+        // Send any remaining data after the last newline
+        if start_idx < kb_data.len() {
+            let remaining = &kb_data[start_idx..];
+            
+            #[cfg(windows)]
+            let data_to_send = normalize_line_endings(remaining);
+            #[cfg(not(windows))]
+            let data_to_send = remaining.to_vec();
+            
+            writer.write_all(&data_to_send)?;
+        }
     }
 
     // Wait for child with timeout
