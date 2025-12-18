@@ -235,6 +235,10 @@ fn main() -> Result<()> {
     // Get master for I/O
     let master = pair.master;
 
+    // Note: Both Windows ConPTY and Unix PTY echo stdin by default
+    // This is the expected behavior - students see what they type
+    // Golden files should include echoed stdin for realistic testing
+
     // Read keyboard input if provided
     let keyboard_input = if let Some(kb_path) = &args.keyboard_input {
         Some(
@@ -280,7 +284,8 @@ fn main() -> Result<()> {
     // Send stdin content if provided
     if let Some(stdin_path) = &args.stdin_file {
         let stdin_content = fs::read(stdin_path)?;
-        // Convert LF to CRLF for Windows ConPTY compatibility
+        // Normalize LF to CRLF for Windows scanf compatibility
+        // Echo is disabled, so this won't cause cursor positioning issues
         let normalized = normalize_line_endings(&stdin_content);
         writer.write_all(&normalized)?;
     }
@@ -290,7 +295,8 @@ fn main() -> Result<()> {
 
     // Send keyboard input if provided
     if let Some(kb_data) = keyboard_input {
-        // Convert LF to CRLF for Windows ConPTY compatibility
+        // Normalize LF to CRLF for Windows scanf compatibility
+        // Echo is disabled, so this won't cause cursor positioning issues
         let normalized = normalize_line_endings(&kb_data);
         writer.write_all(&normalized)?;
     }
