@@ -13,12 +13,13 @@ jobs:
         include:
           - os: ubuntu-latest
             archive: gtest-linux-x64.tar.gz
+            cmake_extra: ""
           - os: windows-latest
             archive: gtest-windows-x64-msvc.tar.gz
-          - os: macos-13
-            archive: gtest-macos-x64.tar.gz
+            cmake_extra: ""
           - os: macos-latest
-            archive: gtest-macos-arm64.tar.gz
+            archive: gtest-macos-universal.tar.gz
+            cmake_extra: -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
     permissions:
       contents: write
 
@@ -30,7 +31,7 @@ jobs:
         run: |
           git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
           cd googletest
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_extra }}
           cmake --build build --config Release -j 4
 
       - name: Package GTest (Unix)
@@ -280,8 +281,7 @@ jobs:
           # Each archive is in its own directory (artifact name = directory)
           cp gtest-linux-x64.tar.gz/gtest-linux-x64.tar.gz ./
           cp gtest-windows-x64-msvc.tar.gz/gtest-windows-x64-msvc.tar.gz ./
-          cp gtest-macos-x64.tar.gz/gtest-macos-x64.tar.gz ./
-          cp gtest-macos-arm64.tar.gz/gtest-macos-arm64.tar.gz ./
+          cp gtest-macos-universal.tar.gz/gtest-macos-universal.tar.gz ./
 
       - name: Create Version Tag and Release
         env:
@@ -298,8 +298,7 @@ jobs:
              libs/libvterm.tar.gz \
              gtest-linux-x64.tar.gz \
              gtest-windows-x64-msvc.tar.gz \
-             gtest-macos-x64.tar.gz \
-             gtest-macos-arm64.tar.gz \
+             gtest-macos-universal.tar.gz \
              pty-runner-linux-x64 \
              pty-runner-windows-x64.exe \
              pty-runner-macos-x64 \
