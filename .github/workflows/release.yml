@@ -31,7 +31,7 @@ jobs:
         run: |
           git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
           cd googletest
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_extra }}
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -Dgtest_force_shared_crt=ON ${{ matrix.cmake_extra }}
           cmake --build build --config Release -j 4
 
       - name: Package GTest (Unix)
