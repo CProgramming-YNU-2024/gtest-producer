@@ -278,10 +278,11 @@ jobs:
 
       - name: Prepare platform-specific GTest archives
         run: |
-          # Each archive is in its own directory (artifact name = directory)
-          cp gtest-linux-x64.tar.gz/gtest-linux-x64.tar.gz ./
-          cp gtest-windows-x64-msvc.tar.gz/gtest-windows-x64-msvc.tar.gz ./
-          cp gtest-macos-universal.tar.gz/gtest-macos-universal.tar.gz ./
+          # Artifact directories have same name as archive; move from inside dir
+          mkdir -p release_assets
+          mv gtest-linux-x64.tar.gz/gtest-linux-x64.tar.gz release_assets/
+          mv gtest-windows-x64-msvc.tar.gz/gtest-windows-x64-msvc.tar.gz release_assets/
+          mv gtest-macos-universal.tar.gz/gtest-macos-universal.tar.gz release_assets/
 
       - name: Create Version Tag and Release
         env:
@@ -296,9 +297,9 @@ jobs:
              libs/gtest.tar.gz \
              libs/uchardet.tar.gz \
              libs/libvterm.tar.gz \
-             gtest-linux-x64.tar.gz \
-             gtest-windows-x64-msvc.tar.gz \
-             gtest-macos-universal.tar.gz \
+             release_assets/gtest-linux-x64.tar.gz \
+             release_assets/gtest-windows-x64-msvc.tar.gz \
+             release_assets/gtest-macos-universal.tar.gz \
              pty-runner-linux-x64 \
              pty-runner-windows-x64.exe \
              pty-runner-macos-x64 \
