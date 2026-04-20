@@ -55,6 +55,9 @@ jobs:
           mkdir -p gtest-libs/include gtest-libs/Release gtest-libs/Debug
           cp googletest/build/lib/Release/*.lib gtest-libs/Release/
           cp googletest/build/lib/Debug/*.lib gtest-libs/Debug/
+          # Keep flat layout (Release at root) for backward compatibility
+          # with old FindOrFetchGTest.cmake that uses IMPORTED_LOCATION
+          cp googletest/build/lib/Release/*.lib gtest-libs/
           cp -r googletest/googletest/include/gtest gtest-libs/include/
           tar czf "${{ matrix.archive }}" gtest-libs/
 
