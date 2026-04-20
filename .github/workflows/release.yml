@@ -34,6 +34,12 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -Dgtest_force_shared_crt=ON ${{ matrix.cmake_extra }}
           cmake --build build --config Release -j 4
 
+      - name: Build GTest (Debug, Windows only)
+        if: runner.os == 'Windows'
+        run: |
+          cd googletest
+          cmake --build build --config Debug -j 4
+
       - name: Package GTest (Unix)
         if: runner.os != 'Windows'
         run: |
@@ -46,8 +52,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          mkdir -p gtest-libs/include
-          cp googletest/build/lib/Release/*.lib gtest-libs/
+          mkdir -p gtest-libs/include gtest-libs/Release gtest-libs/Debug
+          cp googletest/build/lib/Release/*.lib gtest-libs/Release/
+          cp googletest/build/lib/Debug/*.lib gtest-libs/Debug/
           cp -r googletest/googletest/include/gtest gtest-libs/include/
           tar czf "${{ matrix.archive }}" gtest-libs/
 
